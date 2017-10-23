@@ -15,11 +15,11 @@
 ;így az F0 szabadon felhasználható flag lett kijelölve a carry átmeneti tárolójaként,
 ;mivel bitmódosító uatsítások segítségével könnyen módosítható
 
-;A program a 34 sorban található infinity_loop címkénél elhelyzett breakpointnál már
+;A program a 34. sorban található infinity_loop címkénél elhelyzett breakpointnál már
 ;előállította a szükséges eredményt.
 
 NUMLOW EQU R2	;a bemenet alacsony byteját tároló regiszter
-NUMHIGH EQU R3	;a bemenet magas byteját táoló regiszter
+NUMHIGH EQU R3	;a bemenet magas byteját tároló regiszter
 RESLOW EQU R4	;a műveletvégzés során az eredmény alsó bíteját tároló regiszter
 RESHIGH EQU R5	;a műveletvégzés során az eredmény alsó bíteját tároló regiszter
 
@@ -76,7 +76,7 @@ different_bytes:
 	RLC A				;mivel a (HIGH<<8)*LOW = (LOW<<8)*HIGH, így egy bit balra shiftelésével a két lépés össze lett vonva
 	ORL C, F0			;ráadásul így a carry biten keresztül shiftelve az overflow is egyszerűen ellenőrizhető
 	MOV F0, C
-	ADD A, RESHIGH		;itt RESHIGH-hoz adjuk hozzá a szorzás eredméynének alsó byteját, mivel a felső nem fér 16 bitbe (a 8 bitnyi balra shift miatt, amit fizikailag nem hajtunk végre, hanem ezt megkerülve RESHIGH-hoz adjuk hozzá az eredményt)
+	ADD A, RESHIGH		;itt RESHIGH-hoz adjuk hozzá a szorzás eredményének alsó byteját, mivel a felső nem fér 16 bitbe (a 8 bitnyi balra shift miatt, amit fizikailag nem hajtunk végre, hanem ezt megkerülve RESHIGH-hoz adjuk hozzá az eredményt)
 	ORL C, F0			;az összeadás miatt újra ellenőrizni kell a carryt
 	MOV F0, C
 	MOV RESHIGH, A
