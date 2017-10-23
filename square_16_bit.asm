@@ -11,17 +11,17 @@
 ;megegyezik értékét tekintve (high-low byteok szorzása), így egyszerűsíthető a feladat.
 ;Továbbá a túlcsordulás ellenőrzésekor figyelembe vehetjük, hogy amikor shiftelnünk kell,
 ;akkor a kishiftelt bitek 0-val való komparálása jelzi a túlcsordulást.
-;A carry flaget a program végrehajtása közben az ADD utasítások állíthatják,
+;A carry flaget a program végrehajtása közben az ADD utasítások állíthatják (MUL AB csak reseteli),
 ;így az F0 szabadon felhasználható flag lett kijelölve a carry átmeneti tárolójaként,
-;mivel bitmódosító uatsítások segítségével könnyen módosítható
+;mivel bitmódosító utasítások segítségével könnyen módosítható
 
 ;A program a 34. sorban található infinity_loop címkénél elhelyzett breakpointnál már
 ;előállította a szükséges eredményt.
 
 NUMLOW EQU R2	;a bemenet alacsony byteját tároló regiszter
 NUMHIGH EQU R3	;a bemenet magas byteját tároló regiszter
-RESLOW EQU R4	;a műveletvégzés során az eredmény alsó bíteját tároló regiszter
-RESHIGH EQU R5	;a műveletvégzés során az eredmény alsó bíteját tároló regiszter
+RESLOW EQU R4	;a műveletvégzés során az eredmény alsó byteját tároló regiszter
+RESHIGH EQU R5	;a műveletvégzés során az eredmény alsó byteját tároló regiszter
 
 ;A szegmenskezelő direktívákat nem ismeri a szimulátor, így azok nem kerültek felhasználásra
 ;Kódmemória elejére pozícionálás és ugrótábla a main függvényre
@@ -58,13 +58,13 @@ square_16_bit:
 	CLR F0				;F0 flag törlése, ebben kerül tárolásra átmenetileg a carry flag
 same_bytes_low:
 	MOV A, NUMLOW		;az alsó byte szorzása önmagával
-	MOV B, A			;másoljuk A-t, hogy véletlenül se törhénhessen meg, hogy csak egy helyen változtatjuk meg az értéket
+	MOV B, A			;másoljuk A-t, így átláthatóbb
 	MUL AB
 	MOV RESLOW, A		;nem kell összeadni, mivel ez az első lépése a négyzetre emelésnek
 	MOV RESHIGH, B
 same_bytes_high:
 	MOV A, NUMHIGH		;a magasabb helyiértékű byteok szorzása
-	MOV B, A			;másoljuk A-t, hogy véletlenül se törhénhessen meg, hogy csak egy helyen változtatjuk meg az értéket
+	MOV B, A			;másoljuk A-t, így átláthatóbb
 	MUL AB
 	ORL A, B			;mivel itt 16 bitet kellene balra shiftelni, ami mindenképp túlcsordulást eredményez, így elegendő A OR B-t vizsgálni a túlcsordulás tényéhez
 	JZ different_bytes	;ha 0 az akkumulátor, akkor nem történik overflow
