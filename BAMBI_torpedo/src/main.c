@@ -25,6 +25,7 @@
 volatile unsigned char data;
 volatile bool data_received;
 
+// variable to store the ship configurations (at this stage contains only one)
 SegmentLCD_SegmentData_TypeDef ships[7];
 
 void init_ships(void)
@@ -54,6 +55,7 @@ void UART0_RX_IRQHandler(void)
 	USART_IntClear(UART0, USART_IF_RXDATAV);
 }
 
+//needed to replace with a systick IT
 void delay(int length)
 {
 	for(int d=0;d<length;d++);
@@ -62,17 +64,14 @@ void delay(int length)
 int main(void)
 {
 	/*Variables*/
-	uint16_t num_try = 0;
-	SegmentLCD_SegmentData_TypeDef actual_shots[7];		//stored shots
+	uint16_t num_try = 0;									//number of shots fired (one segment counted only once)
+	SegmentLCD_SegmentData_TypeDef actual_shots[7];			//stored shots
 
-	SegmentLCD_SegmentData_TypeDef displayed_segments[7];
-
-
-	uint16_t actual_segment;	//actual blinking segment
-	uint8_t segment_idx = 0;
-	uint8_t digit_sel = 0;
-
-	bool toggle_flag = true;
+	SegmentLCD_SegmentData_TypeDef displayed_segments[7];	//temporary variable to store segments for displaying
+	uint16_t actual_segment = 1;							//actual blinking segment
+	uint8_t segment_idx = 0;								//index of segment (0-13)
+	uint8_t digit_sel = 0;									//digit select signal (0-6)
+	bool toggle_flag = true;								//flag used for the blinking effect
 
 	//Reset variable (it was a problem that the array had init values != 0
 	for(unsigned char i = 0; i < 7; i++)
@@ -80,7 +79,6 @@ int main(void)
 		actual_shots[i].raw = 0;
 	}
 
-	actual_segment = 0;
 
 	/* Chip errata */
 	CHIP_Init();
@@ -88,8 +86,8 @@ int main(void)
 	/*Config settings*/
 	enter_DefaultMode_from_RESET();
 
-	/*Set LED0*/
 #if DEBUG
+	/*Set LED0*/
 	GPIO_PinOutSet(LED0_PORT, LED0_PIN);
 #endif
 
@@ -102,7 +100,8 @@ int main(void)
 	NVIC_EnableIRQ(UART0_RX_IRQn);
 
 	/* Infinite loop */
-	while (1) {
+	while (1)
+	{
 		if (data_received)
 		{
 			data_received = false;
@@ -113,8 +112,9 @@ int main(void)
 			{
 				case LEFT:
 				{
-					//SET actual segment
 					digit_sel--;
+
+					//correct if the index have gone around
 					if(digit_sel == 255)
 					{
 						digit_sel = NUM_DIGIT - 1;
@@ -124,6 +124,8 @@ int main(void)
 				case RIGHT:
 				{
 					digit_sel++;
+
+					//correct if the index have been wrapped around
 					if(digit_sel == NUM_DIGIT)
 					{
 						digit_sel = 0;
@@ -132,13 +134,17 @@ int main(void)
 				}
 				case DOWN:
 				{
+					//handle middle segment as one entity
 					if((segment_idx - 1 ==  6) || (segment_idx - 1 == 10))
 					{
 						segment_idx--;
+
+						//update variable for the segment structure
 						actual_segment = MIDDLE_SEG; //segments 6 and 10
 					}
 					else
 					{
+						//check whether segment should have wrap around
 						if(!segment_idx)
 						{
 							segment_idx = NUM_SEGMENT - 1;
@@ -147,20 +153,27 @@ int main(void)
 						{
 							segment_idx--;
 						}
+
+						//update variable for the segment structure
 						actual_segment = (1 << segment_idx);
 					}
 					break;
 				}
 				case UP:
 				{
+					//handle middle segment as one entity
 					if((segment_idx + 1 ==  6) || (segment_idx + 1 == 10))
 					{
 						segment_idx++;
+
+						//update variable for the segment structure
 						actual_segment = MIDDLE_SEG; //segments 6 and 10
 					}
 					else
 					{
-						segment_idx = (segment_idx + 1) % NUM_SEGMENT;
+						segment_idx = ((segment_idx + 1) % NUM_SEGMENT);
+
+						//update variable for the segment structure
 						actual_segment = (1 << segment_idx);
 					}
 					break;
@@ -176,6 +189,7 @@ int main(void)
 						//set segment as targeted
 						actual_shots[digit_sel].raw |= actual_segment;
 
+						//turn on A-Ring
 						for(uint8_t i = 0; i < 7; i++)
 						{
 							SegmentLCD_ARing(i, 1);
@@ -190,13 +204,14 @@ int main(void)
 						//if target was hit
 						if(ships[digit_sel].raw & actual_segment)
 						{
+							//blink A-Ring if hit
 							for(uint8_t j = 0; j < 4; j++)
 							{
 								for(uint8_t i = 0; i < 7; i++)
 								{
 									SegmentLCD_ARing(i, 1);
 								}
-								delay(100000);
+								delay(500000);
 								for(uint8_t i = 0; i < 7; i++)
 								{
 									SegmentLCD_ARing(i, 0);
@@ -206,11 +221,12 @@ int main(void)
 					}
 					else
 					{
+						//blink the lock icon if segment was targeted before
 						for(uint8_t i = 0; i < 4; i++)
 						{
 							SegmentLCD_Symbol(LCD_SYMBOL_PAD0, 1);
 							SegmentLCD_Symbol(LCD_SYMBOL_PAD1, 1);
-							delay(100000);
+							delay(500000);
 							SegmentLCD_Symbol(LCD_SYMBOL_PAD0, 0);
 							SegmentLCD_Symbol(LCD_SYMBOL_PAD1, 0);
 						}
@@ -222,8 +238,8 @@ int main(void)
 				default:
 				{
 					//set 0 segment
-				}
 					break;
+				}
 			}
 
 #if DEBUG
@@ -236,10 +252,15 @@ int main(void)
 #endif
 		}
 
-		for(uint8_t i = 0; i < NUM_DIGIT; i++)
+		//COMMENTED OUT, ONE SINGLE STEP IS ENOUGH, NO LOOP NEEDED
+		/*for(uint8_t i = 0; i < NUM_DIGIT; i++)
 		{
 			displayed_segments[i].raw = actual_shots[i].raw & ships[i].raw;
-		}
+		}*/
+
+		//update displayed segments (only the actual one, the other is unnecessary)
+		displayed_segments[digit_sel].raw = actual_shots[digit_sel].raw & ships[digit_sel].raw;
+
 		if(toggle_flag)
 		{
 			toggle_flag = false;
