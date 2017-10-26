@@ -2,7 +2,7 @@
  * main.h
  *
  *  Created on: 2017. okt. 26.
- *      Author: Reizinger Patrik
+ *      Author: Marosvári Kristóf & Reizinger Patrik
  */
 
 #ifndef SRC_MAIN_H_
@@ -27,7 +27,7 @@ bool toggle_flag = true;								//flag used for the blinking effect
 
 volatile uint32_t msTicks = 0;
 
-// variable to store the ship configurations (at this stage contains only one)
+// variable to store the ship configurations
 SegmentLCD_SegmentData_TypeDef ships[16][7];
 
 #endif /* SRC_MAIN_H_ */

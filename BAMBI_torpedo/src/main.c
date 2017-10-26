@@ -1,5 +1,12 @@
+/*
+ * main.c
+ *
+ *  Created on: 2017. okt. 26.
+ *      Author: Marosvári Kristóf & Reizinger Patrik
+ */
+
+
 #include "main.h"
-//function to set ship positions
 
 
 int main(void)
@@ -8,6 +15,7 @@ int main(void)
 	/* Chip errata */
 	CHIP_Init();
 
+	/*Configure systick with arbitrarily chosen value*/
 	SysTick_Config(0xFFFFFF);
 
 	/*Config settings*/
@@ -42,7 +50,7 @@ int main(void)
 			{
 				case RESET:
 				{
-
+					Init_Game();
 					break;
 				}
 				case LEFT:
@@ -198,6 +206,7 @@ int main(void)
 		}
 
 
+		//Blinking effect
 		if(toggle_flag)
 		{
 			toggle_flag = false;
@@ -217,6 +226,8 @@ int main(void)
 			SegmentLCD_Write("YOU WIN");
 			while(!data_received){}; //starting new game when any key pressed
 			Init_Game();
+			//for safety, reset data
+			data = 0;
 		}
 	}
 }
