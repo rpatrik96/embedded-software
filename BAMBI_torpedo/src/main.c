@@ -1,90 +1,18 @@
-#include "em_device.h"
-#include "em_chip.h"
-#include "InitDevice.h"
-#include "em_usart.h"
-#include "em_gpio.h"
-#include "em_emu.h"
-#include "segmentlcd.h"
-#include "segmentlcdconfig.h"
-#include "segmentlcd_spec.h"
+#include "torpedo.h"
+//function to set ship positions
 
-
-#define DEBUG 1
-
-#define LEFT 68
-#define RIGHT 67
-#define DOWN 66
-#define UP 65
-#define FIRE 32
-
-#define NUM_DIGIT 7
-#define NUM_SEGMENT 14
-
-#define MIDDLE_SEG ((1<< 10) | (1 << 6))
-
-volatile unsigned char data;
-volatile bool data_received;
-
-// variable to store the ship configurations (at this stage contains only one)
-SegmentLCD_SegmentData_TypeDef ships[7];
-
-void init_ships(void)
-{
-	ships[0].g = 1;
-	ships[0].m = 1;
-
-	ships[1].g = 1;
-	ships[1].g = 1;
-
-	ships[2].k = 1;
-	ships[2].q = 1;
-
-	ships[3].b = 1;
-	ships[3].c = 1;
-
-	ships[5].a = 1;
-
-	ships[6].a = 1;
-}
-
-
-void UART0_RX_IRQHandler(void)
-{
-	data = USART_RxDataGet(UART0);
-	data_received = true;
-	USART_IntClear(UART0, USART_IF_RXDATAV);
-}
-
-//needed to replace with a systick IT
-void delay(int length)
-{
-	for(int d=0;d<length;d++);
-}
 
 int main(void)
 {
-	/*Variables*/
-	uint16_t num_try = 0;									//number of shots fired (one segment counted only once)
-	SegmentLCD_SegmentData_TypeDef actual_shots[7];			//stored shots
-
-	SegmentLCD_SegmentData_TypeDef displayed_segments[7];	//temporary variable to store segments for displaying
-	uint16_t actual_segment = 1;							//actual blinking segment
-	uint8_t segment_idx = 0;								//index of segment (0-13)
-	uint8_t digit_sel = 0;									//digit select signal (0-6)
-	bool toggle_flag = true;								//flag used for the blinking effect
-
-	//Reset variable (it was a problem that the array had init values != 0
-	for(unsigned char i = 0; i < 7; i++)
-	{
-		actual_shots[i].raw = 0;
-	}
-
 
 	/* Chip errata */
 	CHIP_Init();
 
+	SysTick_Config(0xFFFFFF);
+
 	/*Config settings*/
 	enter_DefaultMode_from_RESET();
+
 
 #if DEBUG
 	/*Set LED0*/
@@ -93,11 +21,15 @@ int main(void)
 
 	/*Init LCD*/
 	SegmentLCD_Init(false);
-	SegmentLCD_Number(num_try);
 
 	/*IT enable*/
 	USART_IntEnable(UART0, USART_IF_RXDATAV);
 	NVIC_EnableIRQ(UART0_RX_IRQn);
+
+	/*Game init*/
+	//initialize ship positions
+	init_ships();
+	Init_Game();
 
 	/* Infinite loop */
 	while (1)
@@ -106,10 +38,13 @@ int main(void)
 		{
 			data_received = false;
 
-			////clear last segment
-			//actual_ships[digit_sel].raw = 0;
 			switch (data)
 			{
+				case RESET:
+				{
+
+					break;
+				}
 				case LEFT:
 				{
 					digit_sel--;
@@ -132,7 +67,7 @@ int main(void)
 					}
 					break;
 				}
-				case DOWN:
+				case UP:
 				{
 					//handle middle segment as one entity
 					if((segment_idx - 1 ==  6) || (segment_idx - 1 == 10))
@@ -159,7 +94,7 @@ int main(void)
 					}
 					break;
 				}
-				case UP:
+				case DOWN:
 				{
 					//handle middle segment as one entity
 					if((segment_idx + 1 ==  6) || (segment_idx + 1 == 10))
@@ -202,8 +137,11 @@ int main(void)
 
 
 						//if target was hit
-						if(ships[digit_sel].raw & actual_segment)
+						if(ships[actual_ship][digit_sel].raw & actual_segment)
 						{
+							//count hits
+							num_hit++;
+
 							//blink A-Ring if hit
 							for(uint8_t j = 0; j < 4; j++)
 							{
@@ -211,24 +149,26 @@ int main(void)
 								{
 									SegmentLCD_ARing(i, 1);
 								}
-								delay(500000);
+								delay(200000);
 								for(uint8_t i = 0; i < 7; i++)
 								{
 									SegmentLCD_ARing(i, 0);
 								}
+								delay(200000);
 							}
 						}
 					}
 					else
 					{
 						//blink the lock icon if segment was targeted before
-						for(uint8_t i = 0; i < 4; i++)
+						for(uint8_t i = 0; i < 3; i++)
 						{
 							SegmentLCD_Symbol(LCD_SYMBOL_PAD0, 1);
 							SegmentLCD_Symbol(LCD_SYMBOL_PAD1, 1);
-							delay(500000);
+							delay(200000);
 							SegmentLCD_Symbol(LCD_SYMBOL_PAD0, 0);
 							SegmentLCD_Symbol(LCD_SYMBOL_PAD1, 0);
+							delay(200000);
 						}
 					}
 
@@ -237,7 +177,6 @@ int main(void)
 
 				default:
 				{
-					//set 0 segment
 					break;
 				}
 			}
@@ -252,27 +191,32 @@ int main(void)
 #endif
 		}
 
-		//COMMENTED OUT, ONE SINGLE STEP IS ENOUGH, NO LOOP NEEDED
-		/*for(uint8_t i = 0; i < NUM_DIGIT; i++)
+		//update displayed segments
+		for(uint8_t i = 0; i < NUM_DIGIT; i++)
 		{
-			displayed_segments[i].raw = actual_shots[i].raw & ships[i].raw;
-		}*/
+			displayed_segments[i].raw = actual_shots[i].raw & ships[actual_ship][i].raw;
+		}
 
-		//update displayed segments (only the actual one, the other is unnecessary)
-		displayed_segments[digit_sel].raw = actual_shots[digit_sel].raw & ships[digit_sel].raw;
 
 		if(toggle_flag)
 		{
 			toggle_flag = false;
-			displayed_segments[digit_sel].raw ^= actual_segment;
+			displayed_segments[digit_sel].raw ^= actual_segment; //display actual segment and hit ship parts
 			displaySegmentField(displayed_segments);
 		}
 		else
 		{
 			toggle_flag = true;
-			//actual_shots[digit_sel].raw = 0;
-			displaySegmentField(displayed_segments);
+			displaySegmentField(displayed_segments); //display hit ship parts
 		}
 		delay(200000);
+
+		//start new game if all ships are destroyed
+		if(num_hit == 1)
+		{
+			SegmentLCD_Write("YOU WIN");
+			while(!data_received){}; //starting new game when any key pressed
+			Init_Game();
+		}
 	}
 }
