@@ -1,4 +1,4 @@
-#include "torpedo.h"
+#include "main.h"
 //function to set ship positions
 
 
@@ -212,7 +212,7 @@ int main(void)
 		delay(200000);
 
 		//start new game if all ships are destroyed
-		if(num_hit == 1)
+		if(num_hit == 8)
 		{
 			SegmentLCD_Write("YOU WIN");
 			while(!data_received){}; //starting new game when any key pressed

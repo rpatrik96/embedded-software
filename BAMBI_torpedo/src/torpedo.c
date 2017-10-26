@@ -7,6 +7,7 @@
 
 #include "torpedo.h"
 
+
 void init_ships(void)
 {
 	// SHIP 0
