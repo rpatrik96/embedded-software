@@ -41,7 +41,7 @@ extern volatile bool data_received;
 extern uint16_t num_try;										//number of shots fired (one segment counted only once)
 extern uint8_t num_hit;											//number of hit ship parts (max 4*2 = 8)
 extern SegmentLCD_SegmentData_TypeDef actual_shots[7];			//stored shots
-extern uint8_t actual_ship;
+extern uint8_t actual_ship;										//randomly selected ship index
 extern SegmentLCD_SegmentData_TypeDef displayed_segments[7];	//temporary variable to store segments for displaying
 extern uint16_t actual_segment;									//actual blinking segment
 extern uint8_t segment_idx;										//index of segment (0-13)
@@ -49,7 +49,7 @@ extern uint8_t digit_sel;										//digit select signal (0-6)
 extern bool toggle_flag ;										//flag used for the blinking effect
 extern volatile uint32_t msTicks;
 
-// variable to store the ship configurations (at this stage contains only one)
+// variable to store the ship configurations
 SegmentLCD_SegmentData_TypeDef ships[16][7];
 
 /*Functions*/

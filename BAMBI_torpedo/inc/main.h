@@ -17,7 +17,7 @@ volatile bool data_received;
 uint16_t num_try = 0;									//number of shots fired (one segment counted only once)
 uint8_t num_hit = 0;									//number of hit ship parts (max 4*2 = 8)
 SegmentLCD_SegmentData_TypeDef actual_shots[7];			//stored shots
-uint8_t actual_ship = 0;
+uint8_t actual_ship = 0;								//ship index
 
 SegmentLCD_SegmentData_TypeDef displayed_segments[7];	//temporary variable to store segments for displaying
 uint16_t actual_segment = 1;							//actual blinking segment

@@ -226,8 +226,6 @@ int main(void)
 			SegmentLCD_Write("YOU WIN");
 			while(!data_received){}; //starting new game when any key pressed
 			Init_Game();
-			//for safety, reset data
-			data = 0;
 		}
 	}
 }

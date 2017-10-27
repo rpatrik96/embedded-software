@@ -268,7 +268,7 @@ void UART0_RX_IRQHandler(void)
  * used only for ship configuartion select*/
 void SysTick_Handler(void)
 {
-  msTicks++;       /* increment counter necessary in Delay()*/
+  msTicks++;
 }
 
 /*Software delay for led/A-Ring/Lock Pad blinking*/
@@ -288,11 +288,10 @@ void Init_Game()
 	segment_idx = 0;
 	digit_sel = 0;
 	toggle_flag = true;
-	data_received = false;
 	SegmentLCD_Number(num_try);
 	for(uint8_t i = 0; i < 7; i++)
 	{
 		actual_shots[i].raw = 0;
 	}
-
+	data_received = false;
 }
