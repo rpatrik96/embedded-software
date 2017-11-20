@@ -141,7 +141,7 @@ void motor(float pwm_val)
 void loop() {
 
   //pozíciószabályzó, utána áramszabályozó
-  float error = motenc_cntr - target_position;
+  float error = target_position - motenc_cntr;
   err_pos = Kp_pos * error;
   err_int_pos = err_int_pos + Ki_pos * error * T_SAMPLE;
 
