@@ -40,13 +40,13 @@ volatile bool run_pi = true;
 
 volatile float cur_val = 0;
 
-const float Kp_pos = 0.25;
-const float Ki_pos = 0.05;
+const float Kp_pos = 0.025;
+const float Ki_pos = 0.0025;
 volatile float err_pos = 0;
 volatile float err_int_pos = 0;
 
-const float Kp_cur = 0.25;
-const float Ki_cur = 0.05;
+const float Kp_cur = 0.025;
+const float Ki_cur = 0.0025;
 volatile float err_cur = 0;
 volatile float err_int_cur = 0;
 
@@ -77,13 +77,13 @@ void motenc1b_IT()
   }
 }
 
-void pi_controller()
+/*void pi_controller()
 { 
   run_pi = true;
-}
+}*/
 
 void setup() {
-  //analogReference();
+  analogReference(INTERNAL1V1);
   Serial.begin(BAUDRATE);
   pinMode(MOTOR_A_EN, OUTPUT);
   pinMode(MOTOR_A_1, OUTPUT);
@@ -107,7 +107,7 @@ void setup() {
 
 void motor(float pwm_val)
 { 
-  int pwm_d = (abs(pwm_val)/255);
+  int pwm_d = max((abs(pwm_val)),255);
   
 
   //write motor pins
@@ -160,7 +160,7 @@ void loop() {
   }
 
   //current controller
-  err_cur = abs(u_current) - cur_val;
+  err_cur = u_current - cur_val;
   err_int_cur = err_int_cur + Ki_cur * err_cur * T_SAMPLE;
 
   //if(u_motor < MAX_U)
@@ -169,7 +169,8 @@ void loop() {
   }
    
   motor(u_motor);
-  
+
+  Serial.print(motor_state);
   Serial.print("Pos:");
   Serial.print(motenc_cntr);
   Serial.print("\t");
