@@ -10,10 +10,14 @@
 //Current measurement
 #define CURRENT_PIN A0
 
+#define T_SAMPLE 0.02
+
 //H-bridge
 #define MOTOR_A_EN 4
 #define MOTOR_A_1 26
 #define MOTOR_A_2 27
+
+#define MAX_U 200.0f
 
 //motor commands
 #define ROTATE_LEFT 0
@@ -24,23 +28,27 @@
 #define MOTENC_1A A8
 #define MOTENC_1B A9
 
-unsigned char motor_state = STOP;
-long motenc_cntr = 0;
-bool motenc1a_val;
-bool motenc1b_val;
+volatile unsigned char motor_state = STOP;
+volatile int motenc_cntr = 0;
+volatile bool motenc1a_val;
+volatile bool motenc1b_val;
 
 //controller
 int target_position = 1000;
+volatile float u_motor = 0.0f;
+volatile bool run_pi = true;
 
-float Kp_pos = 0.5;
-float Ki_pos = 0.1;
-float err_pos = 0;
-float err_int_pos = 0;
+volatile float cur_val = 0;
 
-float Kp_cur = 0;
-float Ki_cur = 0;
-float err_cur = 0;
-float err_int_cur = 0;
+const float Kp_pos = 0.25;
+const float Ki_pos = 0.05;
+volatile float err_pos = 0;
+volatile float err_int_pos = 0;
+
+const float Kp_cur = 0.25;
+const float Ki_cur = 0.05;
+volatile float err_cur = 0;
+volatile float err_int_cur = 0;
 
 
 void motenc1a_IT()
@@ -70,15 +78,12 @@ void motenc1b_IT()
 }
 
 void pi_controller()
-{
-  //pozíciószabályzó, előtte áramszabályozó
-  int error = target_position - motenc_cntr;
-  err_pos = Kp_pos * error;
-  err_int_pos = error_int_pos + Ki_pos * error
-  motor(error_pos + error_int_pos);
+{ 
+  run_pi = true;
 }
 
 void setup() {
+  //analogReference();
   Serial.begin(BAUDRATE);
   pinMode(MOTOR_A_EN, OUTPUT);
   pinMode(MOTOR_A_1, OUTPUT);
@@ -92,33 +97,17 @@ void setup() {
   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(MOTENC_1A), motenc1a_IT, CHANGE);
   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(MOTENC_1B), motenc1b_IT, CHANGE);
 
-  //pinMode(A2, INPUT);
   
-  //discrete PI-controller (T = 20ms)
-  attachInterrupt(pi_controller, 20000)
+  //discrete PI-controller (T = 200ms)  
+  //Timer1.attachInterrupt(pi_controller, 200000);
 
 }
+#define IN_RANGE 300
+#define OUT_RANGE 255
 
-void motor(int pwm_val)
-{
-  //reresh state
-  /*@todo: előbb le kell állítani, mint hogy 0 lenne a hibajel*/
-  if(pwm_val > 0)
-  {
-    motor_state = ROTATE_LEFT;  
-  }
-  else if(pwm_val < 0)
-  {
-    motor_state = ROTATE_RIGHT;  
-  }
-  else
-  {
-    motor_state = STOP;  
-  }
-
-/*@todo: write float map function*/
-  int tmp_pwm = abs(pwm_val);
-  int pwm_d = map(tmp_pwm, 0, 750, 0, 255);
+void motor(float pwm_val)
+{ 
+  int pwm_d = (abs(pwm_val)/255);
   
 
   //write motor pins
@@ -144,13 +133,69 @@ void motor(int pwm_val)
       break;
     }
   }
+  cur_val = analogRead(CURRENT_PIN);
+  //Serial.println(analogRead(CURRENT_PIN));
   
 }
 
 void loop() {
-  Serial.println(analogRead(CURRENT_PIN));
 
-  //Serial.println(motenc_cntr);
-  //target_position += 500;
-  delay(200);
+  //pozíciószabályzó, utána áramszabályozó
+  float error = motenc_cntr - target_position;
+  err_pos = Kp_pos * error;
+  err_int_pos = err_int_pos + Ki_pos * error * T_SAMPLE;
+
+  float u_current = err_pos + err_int_pos;
+  if(error > 0)
+  {
+    motor_state = ROTATE_LEFT;  
+  }
+  else if(error < 0)
+  {
+    motor_state = ROTATE_RIGHT;  
+  }
+  else
+  {
+    motor_state = STOP;  
+  }
+
+  //current controller
+  err_cur = abs(u_current) - cur_val;
+  err_int_cur = err_int_cur + Ki_cur * err_cur * T_SAMPLE;
+
+  //if(u_motor < MAX_U)
+  {
+    u_motor = Kp_cur * err_cur + err_int_cur;
+  }
+   
+  motor(u_motor);
+  
+  Serial.print("Pos:");
+  Serial.print(motenc_cntr);
+  Serial.print("\t");
+  
+  
+  Serial.print("Cur:");
+  Serial.print(cur_val);
+  Serial.print("\t");
+  
+  Serial.print("X_err:");
+  Serial.print(err_pos);
+  Serial.print("\t");
+  
+  Serial.print("X_err_int:");
+  Serial.print(err_int_pos);
+  Serial.print("\t");
+
+  Serial.print("I_err:");
+  Serial.print(err_cur);
+  Serial.print("\t");
+  
+  Serial.print("I_err_int:");
+  Serial.print(err_int_cur);
+  Serial.print("\t");
+ 
+  Serial.print("U_motor:");
+  Serial.println(u_motor);
+  delay(20);
 }
