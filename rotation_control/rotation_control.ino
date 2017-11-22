@@ -7,8 +7,10 @@
 #define DEBUG_PRINT 0
 
 #define BAUDRATE 9600
-#define MOTENC_RES 3090
+#define MOTENC_RES 2900.0f
 #define INTEGRATOR_OFF_TH 40
+
+byte serial_read[2];
 
 //Current measurement
 #define CURRENT_PIN A0
@@ -19,8 +21,6 @@
 #define MOTOR_A_EN 4
 #define MOTOR_A_1 26
 #define MOTOR_A_2 27
-
-#define MAX_U 200.0f
 
 //motor commands
 #define ROTATE_LEFT 0
@@ -37,7 +37,7 @@ volatile bool motenc1a_val;
 volatile bool motenc1b_val;
 
 //controller
-int target_position = 1000;
+int target_position = 0;
 volatile float u_motor = 0.0f;
 volatile float cur_val = 0;
 
@@ -79,7 +79,13 @@ void motenc1b_IT()
 }
 
 
-
+void serialEvent()
+{
+  if(Serial.readBytes(serial_read, 2))
+  {
+    target_position = int(byte(serial_read[0]) << 8 | byte(serial_read[1]))/360.0f * MOTENC_RES;
+  }
+}
 void setup() {
   analogReference(INTERNAL1V1);
   Serial.begin(BAUDRATE);
@@ -129,7 +135,6 @@ void motor(float pwm_val)
 }
 
 void loop() {
-
   //pozíciószabályzó, utána áramszabályozó
   float error = target_position - motenc_cntr;
   err_pos = Kp_pos * error;
@@ -181,12 +186,13 @@ void loop() {
   motor(u_motor);
 
 
+#if DEBUG_PRINT  
   Serial.print(motor_state);
   Serial.print("Err:");
   Serial.print(error);
   Serial.print("\n");
 
-#if DEBUG_PRINT  
+
   Serial.print("Pos:");
   Serial.print(motenc_cntr);
   Serial.print("\t");
