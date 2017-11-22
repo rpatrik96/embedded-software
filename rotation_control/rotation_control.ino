@@ -4,13 +4,16 @@
 #include <PinChangeInterruptPins.h>
 #include <PinChangeInterruptSettings.h>
 
+#define DEBUG_PRINT 0
+
 #define BAUDRATE 9600
 #define MOTENC_RES 3090
+#define INTEGRATOR_OFF_TH 40
 
 //Current measurement
 #define CURRENT_PIN A0
 
-#define T_SAMPLE 0.02
+#define T_SAMPLE 0.01
 
 //H-bridge
 #define MOTOR_A_EN 4
@@ -36,17 +39,15 @@ volatile bool motenc1b_val;
 //controller
 int target_position = 1000;
 volatile float u_motor = 0.0f;
-volatile bool run_pi = true;
-
 volatile float cur_val = 0;
 
-const float Kp_pos = 0.025;
-const float Ki_pos = 0.0025;
+const float Kp_pos = 0.3;
+const float Ki_pos = 0.012;
 volatile float err_pos = 0;
 volatile float err_int_pos = 0;
 
-const float Kp_cur = 0.025;
-const float Ki_cur = 0.0025;
+const float Kp_cur = 0.325;
+const float Ki_cur = 0.01;
 volatile float err_cur = 0;
 volatile float err_int_cur = 0;
 
@@ -77,10 +78,7 @@ void motenc1b_IT()
   }
 }
 
-/*void pi_controller()
-{ 
-  run_pi = true;
-}*/
+
 
 void setup() {
   analogReference(INTERNAL1V1);
@@ -96,14 +94,8 @@ void setup() {
 
   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(MOTENC_1A), motenc1a_IT, CHANGE);
   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(MOTENC_1B), motenc1b_IT, CHANGE);
-
-  
-  //discrete PI-controller (T = 200ms)  
-  //Timer1.attachInterrupt(pi_controller, 200000);
-
 }
-#define IN_RANGE 300
-#define OUT_RANGE 255
+
 
 void motor(float pwm_val)
 { 
@@ -133,9 +125,7 @@ void motor(float pwm_val)
       break;
     }
   }
-  cur_val = analogRead(CURRENT_PIN);
-  //Serial.println(analogRead(CURRENT_PIN));
-  
+  cur_val = analogRead(CURRENT_PIN);  
 }
 
 void loop() {
@@ -145,12 +135,22 @@ void loop() {
   err_pos = Kp_pos * error;
   err_int_pos = err_int_pos + Ki_pos * error * T_SAMPLE;
 
-  float u_current = err_pos + err_int_pos;
-  if(error > 0)
+  float u_current;
+  if (abs(error) < INTEGRATOR_OFF_TH)
+  {
+    err_int_pos = 0;
+    u_current = err_pos;
+  }
+  else
+  {
+    u_current = err_pos + err_int_pos;
+  }
+
+  if(error < 0)
   {
     motor_state = ROTATE_LEFT;  
   }
-  else if(error < 0)
+  else if(error > 0)
   {
     motor_state = ROTATE_RIGHT;  
   }
@@ -163,18 +163,33 @@ void loop() {
   err_cur = u_current - cur_val;
   err_int_cur = err_int_cur + Ki_cur * err_cur * T_SAMPLE;
 
-  //if(u_motor < MAX_U)
+  if (abs(error) < INTEGRATOR_OFF_TH)
+  {
+    err_int_cur = 0;
+    u_motor = Kp_cur * err_cur;
+  }
+  else
   {
     u_motor = Kp_cur * err_cur + err_int_cur;
   }
-   
+
+  if(abs(error) < 4)
+  {
+    u_motor = 0;
+    motor_state = STOP;
+  }
   motor(u_motor);
 
+
   Serial.print(motor_state);
+  Serial.print("Err:");
+  Serial.print(error);
+  Serial.print("\n");
+
+#if DEBUG_PRINT  
   Serial.print("Pos:");
   Serial.print(motenc_cntr);
   Serial.print("\t");
-  
   
   Serial.print("Cur:");
   Serial.print(cur_val);
@@ -198,5 +213,7 @@ void loop() {
  
   Serial.print("U_motor:");
   Serial.println(u_motor);
-  delay(20);
+#endif
+
+  delay(10);
 }
