@@ -11,6 +11,7 @@
 #define INTEGRATOR_OFF_TH 40
 
 byte serial_read[2];
+byte serial_write[2];
 
 //Current measurement
 #define CURRENT_PIN A0
@@ -185,6 +186,11 @@ void loop() {
   }
   motor(u_motor);
 
+  //Send back current angle
+  int tmp = int(motenc_cntr / MOTENC_RES * 360.0f);
+  serial_write[1] = highByte(tmp);
+  serial_write[0] = lowByte(tmp);
+  Serial.write(serial_write,2);
 
 #if DEBUG_PRINT  
   Serial.print(motor_state);
