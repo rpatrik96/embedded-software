@@ -79,14 +79,6 @@ void motenc1b_IT()
   }
 }
 
-
-void serialEvent()
-{
-  if(Serial.readBytes(serial_read, 2))
-  {
-    target_position = int(byte(serial_read[0]) << 8 | byte(serial_read[1]))/360.0f * MOTENC_RES;
-  }
-}
 void setup() {
   analogReference(INTERNAL1V1);
   Serial.begin(BAUDRATE);
@@ -190,7 +182,16 @@ void loop() {
   int tmp = int(motenc_cntr / MOTENC_RES * 360.0f);
   serial_write[1] = highByte(tmp);
   serial_write[0] = lowByte(tmp);
-  Serial.write(serial_write,2);
+  if(Serial)
+  {
+    Serial.write(serial_write,2);
+    Serial.flush();
+  }
+  
+  if(Serial.readBytes(serial_read, 2))
+  {
+    target_position = int(byte(serial_read[0]) << 8 | byte(serial_read[1]))/360.0f * MOTENC_RES;
+  }
 
 #if DEBUG_PRINT  
   Serial.print(motor_state);
