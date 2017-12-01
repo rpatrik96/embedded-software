@@ -9,6 +9,7 @@
 #define BAUDRATE 9600
 #define MOTENC_RES 2900.0f
 #define INTEGRATOR_OFF_TH 40
+#define ROTATION_ACCEPTANCE_THRESHOLD 4
 
 byte serial_read[2];
 byte serial_write[2];
@@ -128,11 +129,12 @@ void motor(float pwm_val)
 }
 
 void loop() {
-  //pozíciószabályzó, utána áramszabályozó
+  //position controller
   float error = target_position - motenc_cntr;
   err_pos = Kp_pos * error;
   err_int_pos = err_int_pos + Ki_pos * error * T_SAMPLE;
 
+  //current controller
   float u_current;
   if (abs(error) < INTEGRATOR_OFF_TH)
   {
@@ -171,7 +173,7 @@ void loop() {
     u_motor = Kp_cur * err_cur + err_int_cur;
   }
 
-  if(abs(error) < 4)
+  if(abs(error) < ROTATION_ACCEPTANCE_THRESHOLD)
   {
     u_motor = 0;
     motor_state = STOP;
@@ -182,11 +184,13 @@ void loop() {
   int tmp = int(motenc_cntr / MOTENC_RES * 360.0f);
   serial_write[1] = highByte(tmp);
   serial_write[0] = lowByte(tmp);
+#if !DEBUG_PRINT
   if(Serial)
   {
     Serial.write(serial_write,2);
     Serial.flush();
   }
+#endif
   
   if(Serial.readBytes(serial_read, 2))
   {
